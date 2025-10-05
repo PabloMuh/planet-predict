@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Download, Loader2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import type { DataMethod } from "./MethodSelector";
 
@@ -11,15 +12,15 @@ interface PredictionSectionProps {
   modelTrained: boolean;
 }
 
-interface PredictionResult {
+interface PlanetPrediction {
+  name: string;
   prediction: string;
-  probabilities: { [key: string]: number };
-  features?: string[];
+  habitable: boolean;
 }
 
 export const PredictionSection = ({ method, predictionFile, modelTrained }: PredictionSectionProps) => {
   const [isPredicting, setIsPredicting] = useState(false);
-  const [result, setResult] = useState<PredictionResult | null>(null);
+  const [results, setResults] = useState<PlanetPrediction[] | null>(null);
 
   const handlePredict = async () => {
     if (!predictionFile || !modelTrained) {
@@ -32,41 +33,49 @@ export const PredictionSection = ({ method, predictionFile, modelTrained }: Pred
     // Simulate prediction
     await new Promise(resolve => setTimeout(resolve, 1500));
 
-    const mockResult: PredictionResult = method === "light-curve" 
-      ? {
-          prediction: "Planet Candidate",
-          probabilities: {
-            "Non-Candidate": 0.15,
-            "Candidate": 0.85
-          },
-          features: ["flux_mean: 1000.2", "flux_std: 45.3", "period: 3.5 days"]
-        }
-      : {
-          prediction: "CONFIRMED",
-          probabilities: {
-            "FALSE POSITIVE": 0.05,
-            "CANDIDATE": 0.25,
-            "CONFIRMED": 0.70
-          },
-          features: ["stellar_magnitude: 12.3", "orbital_period: 5.2", "planet_radius: 1.1 R⊕"]
-        };
+    const mockResults: PlanetPrediction[] = [
+      { name: "Kepler-186f", prediction: "CONFIRMED", habitable: true },
+      { name: "Proxima Centauri b", prediction: "CONFIRMED", habitable: true },
+      { name: "TRAPPIST-1h", prediction: "CANDIDATE", habitable: false },
+      { name: "Gliese 581g", prediction: "CANDIDATE", habitable: false },
+      { name: "HD 209458 b", prediction: "FALSE POSITIVE", habitable: false },
+    ];
 
-    setResult(mockResult);
+    setResults(mockResults);
     setIsPredicting(false);
     toast.success("Predição concluída!");
   };
 
   const handleDownload = () => {
-    if (!result) return;
+    if (!results) return;
     
-    const csvContent = `Prediction,${Object.keys(result.probabilities).join(",")}\n${result.prediction},${Object.values(result.probabilities).join(",")}`;
+    const headers = "Planet Name,Prediction,Habitable\n";
+    const csvRows = results.map(r => `${r.name},${r.prediction},${r.habitable}`).join("\n");
+    const csvContent = headers + csvRows;
+
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "prediction_results.csv";
+    a.download = "prediction_list_results.csv";
     a.click();
     toast.success("Resultados baixados!");
+  };
+
+  const getPredictionClass = (prediction: string, habitable: boolean) => {
+    if (habitable) {
+      return "text-green-400 border-green-500/30 bg-green-500/10";
+    }
+    switch (prediction) {
+      case "CONFIRMED":
+        return "text-primary border-primary/30 bg-primary/10";
+      case "CANDIDATE":
+        return "text-amber-400 border-amber-500/30 bg-amber-500/10";
+      case "FALSE POSITIVE":
+        return "text-red-400 border-red-500/30 bg-red-500/10";
+      default:
+        return "text-muted-foreground border-border bg-muted/30";
+    }
   };
 
   return (
@@ -97,60 +106,43 @@ export const PredictionSection = ({ method, predictionFile, modelTrained }: Pred
           </div>
         </Card>
 
-        {result && (
+        {results && (
           <Card className="p-6 bg-card-glow border-primary/30 animate-fade-in">
-            <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              Resultado da Predição
-            </h3>
-            
-            <div className="space-y-4">
-              <div className="p-4 rounded-lg bg-primary/10 border border-primary/30">
-                <p className="text-sm text-muted-foreground mb-1">Classe Prevista:</p>
-                <p className="text-2xl font-bold text-primary">{result.prediction}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-semibold mb-2">Probabilidades:</p>
-                <div className="space-y-2">
-                  {Object.entries(result.probabilities).map(([key, value]) => (
-                    <div key={key} className="flex items-center gap-3">
-                      <span className="text-sm w-32">{key}:</span>
-                      <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-stellar transition-all"
-                          style={{ width: `${value * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-semibold w-16 text-right">
-                        {(value * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {result.features && (
-                <div className="pt-4 border-t border-border">
-                  <p className="text-sm font-semibold mb-2">Features Extraídas:</p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    {result.features.map((feature, idx) => (
-                      <p key={idx} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
-                        {feature}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-semibold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                Resultados da Predição
+              </h3>
 
               <Button
                 onClick={handleDownload}
                 variant="outline"
-                className="w-full border-secondary/50 hover:border-secondary"
+                size="sm"
+                className="border-secondary/50 hover:border-secondary"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Download Resultados (CSV)
+                Download (CSV)
               </Button>
+            </div>
+            
+            <div className="space-y-3">
+              <TooltipProvider>
+                {results.map((planet, idx) => (
+                  <Card key={idx} className="p-4 flex justify-between items-center bg-muted/20">
+                    <p className="font-semibold">{planet.name}</p>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${getPredictionClass(planet.prediction, planet.habitable)}`}>
+                          {planet.habitable ? "VIDA POSSÍVEL" : planet.prediction}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{planet.habitable ? "Este exoplaneta orbita dentro da zona habitável de sua estrela." : "Este exoplaneta orbita fora da zona habitável de sua estrela."}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Card>
+                ))}
+              </TooltipProvider>
             </div>
           </Card>
         )}

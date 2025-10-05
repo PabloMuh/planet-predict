@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Activity, Database } from "lucide-react";
+import { Activity, Database, Camera } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
-export type DataMethod = "light-curve" | "catalog";
+export type DataMethod = "light-curve" | "catalog" | "fit-image";
 
 interface MethodSelectorProps {
   selectedMethod: DataMethod;
@@ -21,7 +21,7 @@ export const MethodSelector = ({ selectedMethod, onMethodChange }: MethodSelecto
         </p>
       </div>
       
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+      <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
         <Card
           className={`p-6 cursor-pointer transition-all hover:scale-105 ${
             selectedMethod === "light-curve"
@@ -77,6 +77,36 @@ export const MethodSelector = ({ selectedMethod, onMethodChange }: MethodSelecto
                 <p>• Dados: features tabulares do arquivo</p>
                 <p>• Classes: Falso Positivo / Candidato / Confirmado</p>
                 <p>• Ideal para validação de descobertas</p>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card
+          className={`p-6 cursor-pointer transition-all hover:scale-105 ${
+            selectedMethod === "fit-image"
+              ? "border-accent shadow-glow-accent bg-card-glow"
+              : "border-border hover:border-accent/50"
+          }`}
+          onClick={() => onMethodChange("fit-image")}
+        >
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className={`p-4 rounded-full ${
+              selectedMethod === "fit-image" ? "bg-accent/20" : "bg-muted"
+            }`}>
+              <Camera className={`w-8 h-8 ${
+                selectedMethod === "fit-image" ? "text-accent" : "text-muted-foreground"
+              }`} />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold mb-2">Análise de imagens FIT</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Processamento de imagens com EXOTIC
+              </p>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>• Dados: Arquivos .fit (FITS)</p>
+                <p>• Ferramenta: EXOTIC (código open-source)</p>
+                <p>• Ideal para fotometria de trânsito</p>
               </div>
             </div>
           </div>
